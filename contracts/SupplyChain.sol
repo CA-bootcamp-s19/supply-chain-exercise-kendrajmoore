@@ -4,7 +4,7 @@
     https://solidity.readthedocs.io/en/v0.5.0/050-breaking-changes.html
 */
 
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.2;
 
 contract SupplyChain {
 
@@ -51,10 +51,10 @@ contract SupplyChain {
   /* Create 4 events with the same name as each possible State (see above)
     Prefix each event with "Log" for clarity, so the forSale event will be called "LogForSale"
     Each event should accept one argument, the sku */
-  event ForSale(uint sku);
-  event Sold(uint sku);
-  event Shipped(uint sku);
-  event Received(uint sku);
+  event LogForSale(uint sku);
+  event LogSold(uint sku);
+  event LogShipped(uint sku);
+  event LogReceived(uint sku);
 
 /* Create a modifer that checks if the msg.sender is the owner of the contract */
   modifier Owner(){
@@ -62,9 +62,9 @@ contract SupplyChain {
     _;
   }
 
-  modifier verifyCaller (address _address) { require (msg.sender == _address); _;}
+  modifier verifyCaller (address _address) {require(msg.sender == _address); _;}
 
-  modifier paidEnough(uint _price) { require(msg.value >= _price); _;}
+  modifier paidEnough(uint _price) {require(msg.value >= _price); _;}
   modifier checkValue(uint _sku) {
     //refund them after pay for item (why it is before, _ checks for logic before func)
     _;
@@ -81,19 +81,19 @@ contract SupplyChain {
    Hint: What item properties will be non-zero when an Item has been added?
    */
   modifier forSale(uint _sku) { 
-    require (items[_seller] == true);
+    require (items[_sku].state == State.ForSale && items[_sku].price > 0);
     _;
   }
   modifier sold(uint _sku){
-    require(items[_sku].state == State.Sold);
+    require (items[_sku].state == (State.Sold));
     _;
   }
   modifier shipped(uint _sku){
-    require(items[_sku].state == State.Shipped);
+    require (items[_sku].state == (State.Shipped));
     _;
   }
   modifier received(uint _sku){
-    require(items[sku].state == State.received);
+    require (items[_sku].state == (State.Received));
     _;
   }
 
@@ -118,11 +118,11 @@ contract SupplyChain {
     if the buyer paid enough, and check the value after the function is called to make sure the buyer is
     refunded any excess ether sent. Remember to call the event associated with this function!*/
 
-  function buyItem(uint sku) payable public forSale(sku) paidEnough(items) checkValue(sku) {
-    items[sku].seller.transfer(items[sku].price);
+  function buyItem(uint sku) public payable forSale(sku) paidEnough(items[sku].price) checkValue(sku) {
+    emit LogSold(sku);
     items[sku].buyer = msg.sender;
+    items[sku].seller.transfer(items[sku].price);
     items[sku].state = State.Sold;
-    emit Sold(sku);
 
   }
 
@@ -130,14 +130,14 @@ contract SupplyChain {
   is the seller. Change the state of the item to shipped. Remember to call the event associated with this function!*/
   function shipItem(uint sku) public sold(sku) verifyCaller(items[sku].seller) {
     items[sku].state = State.Shipped;
-    emit Shipped(sku);
+    emit LogShipped(sku);
   }
 
   /* Add 2 modifiers to check if the item is shipped already, and that the person calling this function
   is the buyer. Change the state of the item to received. Remember to call the event associated with this function!*/
   function receiveItem(uint sku) public  shipped(sku) verifyCaller(items[sku].buyer) {
     items[sku].state = State.Received;
-    emit Received(sku);
+    emit LogReceived(sku);
   }
 
   /* We have these functions completed so we can run tests, just ignore it :) */
